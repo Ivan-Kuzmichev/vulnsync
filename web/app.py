@@ -9,9 +9,9 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from jinja2 import Template
 
-from app.code_analysis import analyze_code
-from app.integration import integrate
-from app.log_analysis import analyze_logs
+from code_analysis import analyze_code
+from integration import integrate
+from log_analysis import analyze_logs
 
 
 _BASE = Path(__file__).resolve().parent

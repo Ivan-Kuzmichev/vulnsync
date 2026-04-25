@@ -12,8 +12,8 @@ from __future__ import annotations
 import math
 from dataclasses import asdict, dataclass
 
-from app.code_analysis import Vulnerability
-from app.code_analysis.patterns import CWE_DESCRIPTIONS, CWE_SEVERITY
+from code_analysis import Vulnerability
+from code_analysis.patterns import CWE_DESCRIPTIONS, CWE_SEVERITY
 
 
 W1 = 0.30  # P_code

@@ -15,24 +15,20 @@
 ### Локально (Python)
 
 ```bash
-cd app
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python -m app.main
+python main.py
 ```
 
 ### Docker (локальная сборка)
 
 ```bash
-cd app
 docker build -t vuln-analyzer:local .
 docker run --rm -p 8000:8000 vuln-analyzer:local
 ```
 
 ### Docker Compose (готовый образ из GHCR)
-
-Из корня репозитория:
 
 ```bash
 cp .env.example .env
