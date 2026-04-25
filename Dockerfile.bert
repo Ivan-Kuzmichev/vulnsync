@@ -1,0 +1,55 @@
+FROM python:3.12-slim AS builder
+
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /build
+
+COPY requirements.txt requirements-bert.txt ./
+RUN pip install --prefix=/install -r requirements.txt \
+ && pip install --prefix=/install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-bert.txt
+
+
+FROM python:3.12-slim AS model-fetch
+
+ENV PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    HF_HUB_DISABLE_TELEMETRY=1 \
+    HF_HOME=/models
+
+COPY --from=builder /install /usr/local
+
+RUN python -c "from transformers import AutoModel, AutoTokenizer; \
+    AutoTokenizer.from_pretrained('microsoft/graphcodebert-base'); \
+    AutoModel.from_pretrained('microsoft/graphcodebert-base')"
+
+
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=8000 \
+    WITH_BERT=1 \
+    HF_HOME=/models \
+    HF_HUB_DISABLE_TELEMETRY=1 \
+    TRANSFORMERS_OFFLINE=1
+
+RUN groupadd -r app && useradd -r -g app -d /app app
+
+WORKDIR /app
+
+COPY --from=builder /install /usr/local
+COPY --from=model-fetch /models /models
+
+COPY . /app
+RUN chown -R app:app /app /models
+
+USER app
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:8000/').read(); sys.exit(0)" || exit 1
+
+CMD ["python", "-m", "uvicorn", "web.app:app", "--host", "0.0.0.0", "--port", "8000"]

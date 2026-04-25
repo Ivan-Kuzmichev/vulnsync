@@ -21,3 +21,8 @@ dist/
 .vscode/
 *.iml
 .claude/
+
+# BERT artifacts
+data/
+*.pt.tmp
+

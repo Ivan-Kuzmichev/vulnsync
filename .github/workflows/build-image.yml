@@ -57,6 +57,20 @@ jobs:
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - flavor: base
+            dockerfile: Dockerfile
+            suffix: ""
+            platforms: linux/amd64,linux/arm64
+          - flavor: bert
+            dockerfile: Dockerfile.bert
+            suffix: "-bert"
+            # bert image is ~2.5 GB; multi-arch + model fetch is slow.
+            # Limit to amd64 in CI; arm64 builds locally.
+            platforms: linux/amd64
     steps:
       - uses: actions/checkout@v4
 
@@ -79,6 +93,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            suffix=${{ matrix.suffix }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -87,14 +103,14 @@ jobs:
             type=sha,format=short
             type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
 
-      - name: Build and push
+      - name: Build and push (${{ matrix.flavor }})
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          file: ./${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platforms }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.flavor }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.flavor }}

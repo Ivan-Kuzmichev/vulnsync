@@ -178,6 +178,8 @@ def integrate(vulnerabilities: list[Vulnerability], log_report: dict) -> Integra
                     "line": v.line,
                     "snippet": v.snippet,
                     "p_code": round(float(p_code), 3),
+                    "ast_score": round(float(v.ast_score), 3) if v.ast_score is not None else None,
+                    "bert_score": round(float(v.bert_score), 3) if v.bert_score is not None else None,
                 },
                 log_evidence=[r.to_dict() for r in related],
                 rationale=" ".join(rationale_parts),

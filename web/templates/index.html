@@ -189,7 +189,7 @@
         const sev = f.severity_class;
         const codeBlock = f.code_evidence
           ? `<div class="evidence-section">
-               <div class="label">Доказательство (код, P_code=${f.code_evidence.p_code})</div>
+               <div class="label">Доказательство (код, P_code=${f.code_evidence.p_code}${f.code_evidence.ast_score !== null && f.code_evidence.ast_score !== undefined ? ` · AST=${f.code_evidence.ast_score}` : ''}${f.code_evidence.bert_score !== null && f.code_evidence.bert_score !== undefined ? ` · BERT=${f.code_evidence.bert_score}` : ''})</div>
                <pre><code class="language-python">${escape(f.code_evidence.snippet)}</code></pre>
                <div style="font-size:11px;color:#666;margin-top:4px;">Функция: <code>${escape(f.code_evidence.function)}</code> · строка ${f.code_evidence.line}</div>
              </div>`
