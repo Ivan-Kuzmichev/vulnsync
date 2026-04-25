@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Интегрированный анализ уязвимостей</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0; padding: 0; background: #f5f6f8; color: #222;
+    }
+    header {
+      background: linear-gradient(90deg, #1a2940, #2c4a7c);
+      color: white; padding: 18px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    header p { margin: 4px 0 0; font-size: 13px; opacity: 0.85; }
+    main { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    .input-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;
+    }
+    .panel {
+      background: white; border-radius: 8px; padding: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .panel h3 { margin: 0 0 8px; font-size: 14px; color: #555; font-weight: 600; }
+    textarea {
+      width: 100%; min-height: 280px; font-family: "SF Mono", Monaco, Consolas, monospace;
+      font-size: 12px; border: 1px solid #d0d7de; border-radius: 6px; padding: 10px;
+      resize: vertical;
+    }
+    .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    button {
+      background: #2c4a7c; color: white; border: none; padding: 10px 18px;
+      border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 500;
+    }
+    button:hover { background: #1a3357; }
+    button.secondary { background: #586573; }
+    button:disabled { opacity: 0.5; cursor: wait; }
+    .results { display: none; }
+    .results.visible { display: block; }
+    .verdict-card {
+      background: white; border-radius: 8px; padding: 20px; margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 6px solid #888;
+    }
+    .verdict-card.critical { border-left-color: #c0392b; }
+    .verdict-card.high { border-left-color: #e67e22; }
+    .verdict-card.medium { border-left-color: #f1c40f; }
+    .verdict-card.low { border-left-color: #27ae60; }
+    .verdict-card.info { border-left-color: #3498db; }
+    .verdict-row { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; }
+    .metric { font-size: 13px; color: #555; }
+    .metric strong { display: block; font-size: 22px; color: #222; font-weight: 700; margin-top: 2px; }
+    .pill {
+      display: inline-block; padding: 3px 10px; border-radius: 12px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+    }
+    .pill.critical { background: #fadbd8; color: #c0392b; }
+    .pill.high { background: #fdebd0; color: #e67e22; }
+    .pill.medium { background: #fcf3cf; color: #b7950b; }
+    .pill.low { background: #d4efdf; color: #196f3d; }
+    .pill.info { background: #d6eaf8; color: #2874a6; }
+
+    .findings-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .finding {
+      background: white; border-radius: 8px; padding: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #ddd;
+    }
+    .finding.critical { border-left-color: #c0392b; }
+    .finding.high { border-left-color: #e67e22; }
+    .finding.medium { border-left-color: #f1c40f; }
+    .finding.low { border-left-color: #27ae60; }
+    .finding.info { border-left-color: #3498db; }
+    .finding h4 { margin: 0 0 6px; font-size: 15px; }
+    .finding .meta { font-size: 12px; color: #666; margin-bottom: 10px; display: flex; gap: 14px; flex-wrap: wrap; }
+    .finding .rationale { font-size: 13px; line-height: 1.5; color: #333; margin-bottom: 10px; }
+    .finding .decision { font-size: 13px; font-weight: 600; padding: 8px 10px; border-radius: 4px; background: #f1f3f5; }
+
+    .evidence { margin-top: 12px; }
+    .evidence-section { margin-bottom: 8px; }
+    .evidence-section .label {
+      font-size: 11px; text-transform: uppercase; color: #888; font-weight: 600;
+      margin-bottom: 4px;
+    }
+    pre { margin: 0; }
+    pre code { font-size: 12px; line-height: 1.5; }
+    .log-event {
+      font-family: "SF Mono", Monaco, Consolas, monospace; font-size: 11px;
+      background: #f8f9fa; padding: 8px 10px; border-radius: 4px; margin-bottom: 4px;
+      word-break: break-all; border-left: 3px solid #c0392b;
+    }
+    .log-event .score { color: #c0392b; font-weight: 600; }
+    .breakdown-bar {
+      display: flex; gap: 8px; font-size: 11px; color: #666; margin-top: 6px;
+    }
+    .breakdown-bar span { background: #f1f3f5; padding: 2px 8px; border-radius: 10px; }
+    .empty {
+      text-align: center; padding: 40px; color: #888;
+      background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .summary-row {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;
+    }
+    .summary-card {
+      background: white; padding: 14px; border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center;
+    }
+    .summary-card .label { font-size: 11px; color: #888; text-transform: uppercase; font-weight: 600; }
+    .summary-card .value { font-size: 22px; font-weight: 700; color: #222; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Интегрированный анализ уязвимостей веб-приложений</h1>
+    <p>Прототип методики на основе совместного анализа исходного кода и логов</p>
+  </header>
+
+  <main>
+    <div class="input-grid">
+      <div class="panel">
+        <h3>Исходный код (Python)</h3>
+        <textarea id="code-input">{{ default_code }}</textarea>
+      </div>
+      <div class="panel">
+        <h3>Логи доступа (Combined Log Format)</h3>
+        <textarea id="logs-input">{{ default_logs }}</textarea>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="analyze-btn">Анализировать</button>
+      <button class="secondary" id="load-vulnerable">Уязвимый пример</button>
+      <button class="secondary" id="load-mixed">Несовпадение сигналов</button>
+      <button class="secondary" id="load-admin">Частичная эксплуатация</button>
+      <button class="secondary" id="load-clean">Чистый пример</button>
+      <span id="status" style="font-size: 13px; color: #666;"></span>
+    </div>
+
+    <div class="results" id="results">
+      <div class="verdict-card" id="verdict">
+        <div class="verdict-row">
+          <div class="metric">Общий риск<strong id="overall-risk">—</strong></div>
+          <div class="metric">Уверенность<strong id="overall-confidence">—</strong></div>
+          <div class="metric">Найдено<strong id="findings-count">—</strong></div>
+          <div class="metric" style="flex: 1; min-width: 250px;">Решение<strong id="overall-decision" style="font-size: 14px; line-height: 1.4;">—</strong></div>
+        </div>
+      </div>
+
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="label">События логов</div>
+          <div class="value" id="log-total">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Аномалий</div>
+          <div class="value" id="log-anomalies">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Преобладающий тип</div>
+          <div class="value" id="top-attack" style="font-size: 14px;">—</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Aggregate log score</div>
+          <div class="value" id="agg-score">0.00</div>
+        </div>
+      </div>
+
+      <div class="findings-grid" id="findings"></div>
+    </div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const escape = (s) => String(s).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+
+    function renderFindings(integration) {
+      const findings = integration.findings;
+      const container = $('findings');
+      if (!findings.length) {
+        container.innerHTML = '<div class="empty">Уязвимостей не обнаружено ни одним компонентом. ✓</div>';
+        return;
+      }
+      container.innerHTML = findings.map(f => {
+        const sev = f.severity_class;
+        const codeBlock = f.code_evidence
+          ? `<div class="evidence-section">
+               <div class="label">Доказательство (код, P_code=${f.code_evidence.p_code})</div>
+               <pre><code class="language-python">${escape(f.code_evidence.snippet)}</code></pre>
+               <div style="font-size:11px;color:#666;margin-top:4px;">Функция: <code>${escape(f.code_evidence.function)}</code> · строка ${f.code_evidence.line}</div>
+             </div>`
+          : '';
+        const logBlock = f.log_evidence.length
+          ? `<div class="evidence-section">
+               <div class="label">Доказательство (логи)</div>
+               ${f.log_evidence.slice(0, 4).map(ev => `
+                 <div class="log-event">
+                   <span class="score">[${ev.anomaly_score}]</span>
+                   <span style="color:#888">[${escape(ev.timestamp)}]</span>
+                   ${escape(ev.ip)} ${escape(ev.method)} ${escape(ev.path + (ev.raw.includes('?') ? '?...' : ''))}
+                   <span style="color:#888">→ ${ev.status}</span>
+                 </div>`).join('')}
+             </div>`
+          : '';
+        return `<div class="finding ${sev}">
+          <h4>${escape(f.cwe)} — ${escape(f.cwe_description)}
+            <span class="pill ${sev}" style="margin-left:8px;">${sev}</span>
+          </h4>
+          <div class="meta">
+            <span>Risk: <strong>${f.risk_score}</strong></span>
+            <span>Confidence: <strong>${f.confidence}</strong></span>
+          </div>
+          <div class="rationale">${escape(f.rationale)}</div>
+          <div class="decision">→ ${escape(f.decision)}</div>
+          <div class="evidence">${codeBlock}${logBlock}</div>
+        </div>`;
+      }).join('');
+      Prism.highlightAll();
+    }
+
+    async function analyze() {
+      const btn = $('analyze-btn');
+      const status = $('status');
+      btn.disabled = true;
+      status.textContent = 'Анализ...';
+      try {
+        const res = await fetch('/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: $('code-input').value, logs: $('logs-input').value })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        $('results').classList.add('visible');
+
+        const integ = data.integration;
+        $('overall-risk').textContent = integ.overall_risk.toFixed(2);
+        $('overall-confidence').textContent = integ.overall_confidence.toFixed(2);
+        $('findings-count').textContent = integ.findings.length;
+        $('overall-decision').textContent = integ.overall_decision;
+
+        // Color the verdict card
+        const card = $('verdict');
+        card.className = 'verdict-card';
+        const r = integ.overall_risk;
+        if (r >= 0.85) card.classList.add('critical');
+        else if (r >= 0.65) card.classList.add('high');
+        else if (r >= 0.45) card.classList.add('medium');
+        else if (r >= 0.25) card.classList.add('low');
+        else card.classList.add('info');
+
+        $('log-total').textContent = data.logs.total_events;
+        $('log-anomalies').textContent = data.logs.anomalies.length;
+        $('top-attack').textContent = data.logs.top_attack;
+        $('agg-score').textContent = data.logs.aggregate_score.toFixed(2);
+
+        renderFindings(integ);
+        status.textContent = 'Готово.';
+      } catch (e) {
+        status.textContent = 'Ошибка: ' + e.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function loadSample(codeName, logsName) {
+      const status = $('status');
+      status.textContent = 'Загрузка...';
+      const [codeRes, logsRes] = await Promise.all([
+        fetch('/samples/' + codeName).then(r => r.json()),
+        fetch('/samples/' + logsName).then(r => r.json()),
+      ]);
+      $('code-input').value = codeRes.content || '';
+      $('logs-input').value = logsRes.content || '';
+      status.textContent = 'Загружен пример.';
+    }
+
+    $('analyze-btn').addEventListener('click', analyze);
+    $('load-vulnerable').addEventListener('click', () => loadSample('vulnerable_code', 'vulnerable_logs'));
+    $('load-mixed').addEventListener('click', () => loadSample('mixed_code', 'mixed_logs'));
+    $('load-admin').addEventListener('click', () => loadSample('admin_code', 'admin_logs'));
+    $('load-clean').addEventListener('click', () => loadSample('clean_code', 'clean_logs'));
+  </script>
+</body>
+</html>
